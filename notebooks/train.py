@@ -1,25 +1,26 @@
 
-
-# Import the required library
+# Import the required libraries
 import xgboost as xgb
 import os
 import pickle
 import boto3
 import argparse
 import sagemaker
+from sagemaker.analytics import TrainingJobAnalytics
 
 model_file_name = "pipeline_model"
 
-
-
 # Main Function
 def main():
+    # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_dir", type=str, default=os.environ.get("SM_MODEL_DIR"))
     args, _ = parser.parse_known_args()
 
     # Specify the AWS region
     region_name = 'us-east-1'  # Change this to your desired region
+    # Set up the default session with the specified region
+    boto3.setup_default_session(region_name=region_name)
     
     # Create a SageMaker session with the specified region
     session = boto3.Session(region_name=region_name)
@@ -56,10 +57,12 @@ def main():
             y_train[i] = 0
         else:
             y_train[i] = 1
-    # Conert it into string to int
+    # Convert it into string to int
     y_train = y_train.astype(int)
+    
     # Model selection
     xgb_model = xgb.XGBClassifier()
+    
     # Train the model
     xgb_model.fit(X_train, y_train)
 
@@ -69,20 +72,20 @@ def main():
             y_test[i] = 0
         else:
             y_test[i] = 1
-    # Conert it into string to int
+    # Convert it into string to int
     y_test = y_test.astype(int)
-    # train accuracy
-    train_accuracy = xgb_model.score(X_train, y_train)
-    # test accuracy
+    
+    # Calculate test accuracy
     test_accuracy = xgb_model.score(X_test, y_test)
+    
     # Save Model
     model_save_path = os.path.join(args.model_dir, model_file_name)
     with open(model_save_path,'wb') as f:
         pickle.dump(xgb_model, f)
-    print(f"Model save at path: {model_save_path}")
-    print(f"Training accuracy: {train_accuracy: .4f}")
-    print(f"Testing accuracy: {test_accuracy: .4f}")
-
+    
+    print(f"Model saved at path: {model_save_path}")
+    print(f"Testing accuracy: {test_accuracy:.4f}")
+    
 
 # Check if the script is being executed as the main module
 if __name__ == "__main__":
